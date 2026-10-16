@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180-v1.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192-v1.png">
+<link rel="manifest" href="manifest-v1.webmanifest">
+<title>重量換算</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="重量換算">
+<meta name="theme-color" content="#1f3a68">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Meiryo", sans-serif;
+  background: #fbf6e6; color: #222; min-height: 100vh;
+  touch-action: manipulation;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+header {
+  background: #1f3a68; color: #fff; padding: 12px 14px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  display: flex; align-items: center; gap: 8px; position: sticky; top: 0; z-index: 10;
+}
+header h1 { font-size: 20px; font-weight: 900; flex: 1; letter-spacing: 1px; }
+header button {
+  background: #fff; color: #1f3a68; border: 0; border-radius: 8px;
+  font: inherit; font-size: 13px; font-weight: 800; padding: 6px 10px;
+}
+main { max-width: 560px; margin: 0 auto; padding: 16px; }
+
+/* はじめの画面 */
+.lead { font-size: 15px; margin: 6px 0 14px; line-height: 1.6; }
+.mode {
+  display: block; width: 100%; text-align: left; border: 3px solid #1f3a68;
+  background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px;
+  font: inherit; color: inherit; box-shadow: 0 3px 0 #1f3a68;
+}
+.mode:active { transform: translateY(2px); box-shadow: 0 1px 0 #1f3a68; }
+.mode b { display: block; font-size: 20px; margin-bottom: 4px; }
+.mode span { font-size: 14px; color: #555; }
+
+/* 進み具合 */
+.prog { display: flex; gap: 5px; margin-bottom: 12px; }
+.prog i { flex: 1; height: 7px; border-radius: 4px; background: #ddd3b4; }
+.prog i.done { background: #e8a33a; }
+.prog i.now { background: #1f3a68; }
+
+.card {
+  background: #fff; border-radius: 16px; padding: 18px 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+}
+.no { font-size: 14px; font-weight: 800; color: #e8a33a; }
+.card h2 { font-size: 24px; font-weight: 900; margin: 2px 0 10px; }
+.text { font-size: 17px; line-height: 1.6; margin-bottom: 14px; }
+.note {
+  background: #fff4d6; border-left: 5px solid #e8a33a; border-radius: 6px;
+  padding: 8px 10px; font-size: 15px; margin-bottom: 14px; line-height: 1.5;
+}
+.note.red { background: #ffe6e6; border-color: #d33; }
+
+label.inp { display: block; font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+label.inp input {
+  display: block; width: 100%; margin-top: 4px; font-size: 24px; font-weight: 800;
+  padding: 8px 10px; border: 2px solid #b9ad8a; border-radius: 10px; font-family: inherit;
+}
+.unit { display: flex; align-items: center; gap: 8px; }
+.unit input { flex: 1; }
+.unit span { font-size: 20px; font-weight: 800; }
+
+/* キー */
+.keys-title { font-size: 14px; font-weight: 800; color: #666; margin-bottom: 6px; }
+.keys { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 6px; }
+.key {
+  border: 0; border-radius: 10px; font: inherit; font-size: 19px; font-weight: 900;
+  padding: 10px 14px; min-width: 54px; color: #222; position: relative;
+  box-shadow: inset 0 -4px 0 rgba(0,0,0,.18), 0 0 0 2px rgba(0,0,0,.25);
+}
+.key.o { background: linear-gradient(#ffd27a, #eea53d); }
+.key.g { background: linear-gradient(#bfe6a5, #76bd57); }
+.key.b { background: linear-gradient(#cfdef0, #93afd0); }
+.key.p { background: linear-gradient(#ffd0d8, #ec95a6); }
+.key.t { background: linear-gradient(#cdeadf, #8cc6b0); }
+.key.num { background: #fff; box-shadow: 0 0 0 2px #444; }
+.key.next { animation: pulse 1s infinite; outline: 4px solid #1f3a68; outline-offset: 2px; }
+.key.pressed { opacity: .4; }
+.key.pressed::after {
+  content: "✓"; position: absolute; top: -10px; right: -6px; font-size: 18px;
+  background: #2a8a2a; color: #fff; border-radius: 50%; width: 24px; height: 24px;
+  line-height: 24px; text-align: center; opacity: 1;
+}
+.arrow { color: #999; font-weight: 900; }
+.sep { flex-basis: 100%; height: 0; }
+.hint { font-size: 13px; color: #888; margin-bottom: 14px; }
+@keyframes pulse { 50% { transform: scale(1.06); } }
+
+/* レシート */
+.receipt {
+  border: 2px solid #333; border-radius: 6px; padding: 12px; margin: 10px 0 14px;
+  background: #fffdf7;
+}
+.receipt .rt { text-align: center; font-weight: 900; font-size: 18px; border-bottom: 1px solid #aaa; padding-bottom: 8px; margin-bottom: 8px; }
+.row { display: flex; align-items: center; gap: 8px; padding: 8px 0; font-size: 18px; font-weight: 800; }
+.chk {
+  width: 44px; height: 44px; border-radius: 8px; border: 3px solid; background: #fff;
+  font-size: 28px; font-weight: 900; line-height: 1; flex-shrink: 0; font-family: inherit;
+}
+.chk.r { border-color: #d33; color: #d33; }
+.chk.u { border-color: #2b5cb8; color: #2b5cb8; }
+.chk.on.r { background: #ffe0e0; }
+.chk.on.u { background: #e0eaff; }
+.hikiuke { display: inline-block; border: 2px solid #b8862b; background: #ffe3a3; border-radius: 6px; padding: 2px 8px; font-weight: 900; }
+
+/* 下のボタン */
+.nav { display: flex; gap: 10px; margin-top: 16px; }
+.nav button {
+  flex: 1; font: inherit; font-size: 19px; font-weight: 900; border-radius: 12px; padding: 14px;
+  border: 3px solid #1f3a68;
+}
+.back { background: #fff; color: #1f3a68; }
+.go { background: #1f3a68; color: #fff; }
+.go.ready { background: #e8a33a; border-color: #b3761d; color: #222; }
+.go:disabled { opacity: .4; }
+.sub { display: flex; gap: 10px; margin-top: 10px; }
+.sub button {
+  flex: 1; font: inherit; font-size: 16px; font-weight: 800; border-radius: 12px; padding: 12px 8px;
+  border: 2px dashed #1f3a68; background: #eef3fb; color: #1f3a68;
+}
+.done-box { text-align: center; padding: 24px 10px; }
+.done-box .big { font-size: 64px; }
+.done-box h2 { font-size: 26px; margin: 8px 0; }
+footer { text-align: center; font-size: 12px; color: #999; margin: 24px 0 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>重量換算</h1>
+  <button id="reset" hidden>最初から</button>
+</header>
+<main id="app"></main>
+<footer>重量換算 v1</footer>
+
+<script>
+const S = { mode: null, idx: 0, rounds: [''], futai: '', tsusu: '', kind: 'Pケース×1', pressed: {}, checks: {} };
+const app = document.getElementById('app');
+const resetBtn = document.getElementById('reset');
+
+function num(v) { const n = parseFloat(String(v).replace(/[^\d.]/g, '')); return isNaN(n) ? 0 : n; }
+function r1(n) { return Math.round(n * 10) / 10; }
+function totalFutai() {
+  if (S.mode === 'one') return num(S.futai);
+  return r1(S.rounds.reduce((a, v) => a + num(v), 0));
+}
+// 500kg以上は 500kg 未満に分ける（710 → 400 と 310）
+function chunks(t) {
+  const out = []; let rem = r1(t);
+  while (rem >= 500) { out.push(400); rem = r1(rem - 400); }
+  out.push(rem); return out;
+}
+function kg(n) { return n ? n + 'kg' : '風袋の重さ'; }
+
+function steps() {
+  const st = [];
+  st.push({
+    id: 'sample', title: 'サンプル10通',
+    text: 'サンプル10通を計量器にのせます。（1通あたりの重さを出す）',
+    keys: [['確定','o'],['↵','o'],'|',['スケール切替','b'],['↵','b'],['0リセット','b']]
+  });
+  if (S.mode === 'one') {
+    st.push({
+      id: 'futai', title: '風袋を入れる',
+      text: 'スケール切替の後、Pケースに入れた郵便物を置きます。風袋の重さを入れて、キーを押します。',
+      input: 'futai',
+      keys: [[kg(num(S.futai)),'num'],['風袋','g'],['↵','g'],['風袋','g'],['↵','g'],['確定','o'],['↵','o']]
+    });
+  } else {
+    S.rounds.forEach((v, i) => st.push({
+      id: 'r' + i, title: (i + 1) + '回目　郵便物をのせる', round: i,
+      text: (i === 0 ? 'スケール切替の後、' : '次に、') + (i + 1) + '回目の郵便物をのせて ＋（プラス）を押します。',
+      keys: [['＋','b']]
+    }));
+    const t = totalFutai(), cs = chunks(t);
+    const keys = [];
+    cs.forEach((c, i) => { keys.push([kg(c), 'num'], ['風袋','p'], ['確定','o'], ['−','t']); if (i < cs.length - 1) keys.push('|'); });
+    keys.push('|', ['確定','o']);
+    st.push({
+      id: 'futai', title: '風袋の合計を引く', total: t, chunks: cs,
+      text: S.rounds.length + '回分の風袋の合計を入れて、ここでまとめて引きます。',
+      keys
+    });
+  }
+  st.push({
+    id: 'tsusu', title: '申請通数', input: 'tsusu',
+    text: '申請通数を入れて、確定します。',
+    keys: [[(num(S.tsusu) ? num(S.tsusu) + '通' : '申請通数'),'num'],['確定','o'],['↵','o']]
+  });
+  st.push({ id: 'print', title: '引受可の場合', text: '画面が「引受可」なら、印刷します。', keys: [['印刷','o'],['↵','o']] });
+  st.push({ id: 'receipt', title: 'レシートのチェック' });
+  return st;
+}
+
+function keyList(step) { return (step.keys || []).filter(k => k !== '|'); }
+function stepDone(step) {
+  if (step.id === 'receipt') return ['f-r','f-u','t-r','t-u'].every(k => S.checks[k]);
+  const n = keyList(step).length;
+  return (S.pressed[step.id] || 0) >= n;
+}
+function canGo(step) {
+  if (step.id === 'futai' && !totalFutai()) return false;
+  if (step.id === 'tsusu' && !num(S.tsusu)) return false;
+  return true;
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function renderStart() {
+  resetBtn.hidden = true;
+  app.innerHTML = `
+    <p class="lead">やり方をえらんでください。<br>1つずつ順番に案内します。</p>
+    <button class="mode" data-m="one"><b>重量換算</b><span>郵便物を1回でのせるとき（Pケース1つなど）</span></button>
+    <button class="mode" data-m="multi"><b>重量換算（複数パレット）</b><span>郵便物を何回かに分けてのせるとき</span></button>`;
+  app.querySelectorAll('.mode').forEach(b => b.onclick = () => {
+    Object.assign(S, { mode: b.dataset.m, idx: 0, rounds: [''], futai: '', tsusu: '', kind: 'Pケース×1', pressed: {}, checks: {} });
+    render();
+  });
+}
+
+function render() {
+  if (!S.mode) return renderStart();
+  resetBtn.hidden = false;
+  const st = steps();
+  if (S.idx >= st.length) return renderDone();
+  const step = st[S.idx];
+  const pressed = S.pressed[step.id] || 0;
+  let h = '<div class="prog">' + st.map((s, i) => `<i class="${i < S.idx ? 'done' : i === S.idx ? 'now' : ''}"></i>`).join('') + '</div>';
+  h += `<div class="card"><div class="no">ステップ ${S.idx + 1} / ${st.length}</div><h2>${esc(step.title)}</h2>`;
+
+  if (step.id === 'receipt') {
+    const t = totalFutai();
+    h += `<p class="text">印刷されたレシートに書きこんで、2人でチェックします。</p>
+      <label class="inp">風袋の種類を書く<input id="kind" value="${esc(S.kind)}"></label>
+      <div class="receipt">
+        <div class="rt">${esc(S.kind)}<br>レシート</div>
+        <div class="row"><button class="chk r ${S.checks['f-r']?'on':''}" data-c="f-r">${S.checks['f-r']?'✓':''}</button><button class="chk u ${S.checks['f-u']?'on':''}" data-c="f-u">${S.checks['f-u']?'✓':''}</button>風袋 ${t}kg</div>
+        <div class="row"><button class="chk r ${S.checks['t-r']?'on':''}" data-c="t-r">${S.checks['t-r']?'✓':''}</button><button class="chk u ${S.checks['t-u']?'on':''}" data-c="t-u">${S.checks['t-u']?'✓':''}</button>申請通数 ${num(S.tsusu)}通</div>
+        <div style="text-align:center;margin-top:4px"><span class="hikiuke">引受可</span></div>
+      </div>
+      <div class="note">2人で <b style="color:#d33">赤</b> と <b style="color:#2b5cb8">青</b> でチェックを入れます。四角を押すとチェックがつきます。</div>`;
+  } else {
+    h += `<p class="text">${esc(step.text)}</p>`;
+    if (step.input === 'futai') {
+      h += `<label class="inp">風袋の重さ<div class="unit"><input id="in" inputmode="decimal" placeholder="例 1.9" value="${esc(S.futai)}"><span>kg</span></div></label>`;
+    }
+    if (step.round !== undefined) {
+      h += `<label class="inp">この回の風袋（メモ・合計に使います）<div class="unit"><input id="in" inputmode="decimal" placeholder="例 1.9" value="${esc(S.rounds[step.round])}"><span>kg</span></div></label>`;
+    }
+    if (step.id === 'futai' && S.mode === 'multi') {
+      h += `<label class="inp">風袋の合計<div class="unit"><input id="tot" inputmode="decimal" value="${step.total || ''}" placeholder="各回の合計"><span>kg</span></div></label>`;
+      h += `<div class="note">※ ここで風袋すべての合計を引きます。</div>`;
+      if (step.chunks.length > 1) h += `<div class="note red">風袋の合計が500kg以上なので、${step.chunks.map(c => c + 'kg').join(' と ')} に分けて入力します。それぞれ「風袋 → 確定 → −」を押します。</div>`;
+    }
+    if (step.input === 'tsusu') {
+      h += `<label class="inp">申請通数<div class="unit"><input id="in" inputmode="numeric" placeholder="例 1000" value="${esc(S.tsusu)}"><span>通</span></div></label>`;
+    }
+    h += `<div class="keys-title">この順に押す（押したらタップ）</div><div class="keys">`;
+    let k = 0, first = true;
+    step.keys.forEach(key => {
+      if (key === '|') { h += '<div class="sep"></div>'; first = true; return; }
+      if (!first) h += '<span class="arrow">›</span>';
+      first = false;
+      const cls = key[1] + (k < pressed ? ' pressed' : k === pressed ? ' next' : '');
+      h += `<button class="key ${cls}" data-k="${k}">${esc(key[0])}</button>`;
+      k++;
+    });
+    h += `</div><p class="hint">${key0hint(step)}</p>`;
+  }
+
+  if (step.round !== undefined) {
+    h += `<div class="sub"><button id="more">もう1回のせる</button>${S.rounds.length > 1 && step.round === S.rounds.length - 1 ? '<button id="less">この回を消す</button>' : ''}</div>`;
+  }
+  const done = stepDone(step);
+  const goLabel = step.round !== undefined && step.round === S.rounds.length - 1 ? '全部のせた →' : step.id === 'receipt' ? '完了' : '次へ →';
+  h += `<div class="nav"><button class="back" id="back">← 戻る</button><button class="go ${done ? 'ready' : ''}" id="go" ${canGo(step) ? '' : 'disabled'}>${goLabel}</button></div></div>`;
+  app.innerHTML = h;
+
+  app.querySelectorAll('.key').forEach(b => b.onclick = () => {
+    const k = +b.dataset.k;
+    S.pressed[step.id] = (k < pressed) ? k : k + 1;   // 押したところまで進む／押したものを押すとそこまで戻る
+    render();
+  });
+  app.querySelectorAll('.chk').forEach(b => b.onclick = () => { S.checks[b.dataset.c] = !S.checks[b.dataset.c]; render(); });
+  const inp = document.getElementById('in');
+  if (inp) inp.oninput = () => {
+    if (step.input === 'futai') S.futai = inp.value;
+    else if (step.input === 'tsusu') S.tsusu = inp.value;
+    else S.rounds[step.round] = inp.value;
+    softRender(step);
+  };
+  const tot = document.getElementById('tot');
+  if (tot) tot.onchange = () => { S.rounds = S.rounds.map(() => ''); S.rounds[0] = tot.value; render(); };
+  const kind = document.getElementById('kind');
+  if (kind) kind.oninput = () => { S.kind = kind.value; app.querySelector('.rt').innerHTML = esc(S.kind) + '<br>レシート'; };
+  const more = document.getElementById('more');
+  if (more) more.onclick = () => { S.rounds.push(''); S.pressed['r' + (S.rounds.length - 1)] = 0; S.idx++; render(); scrollTo(0, 0); };
+  const less = document.getElementById('less');
+  if (less) less.onclick = () => { S.rounds.pop(); delete S.pressed['r' + S.rounds.length]; S.idx--; render(); };
+  document.getElementById('back').onclick = () => { if (S.idx === 0) { S.mode = null; } else S.idx--; render(); scrollTo(0, 0); };
+  document.getElementById('go').onclick = () => { S.idx++; render(); scrollTo(0, 0); };
+}
+
+function key0hint(step) {
+  return step.keys.some(k => k[1] === 'num') ? '白いところは、数字を打つところです。' : '';
+}
+
+// 入力中はフォーカスを保ったまま、キー表示とボタンだけ更新
+function softRender(step) {
+  const st = steps(), s = st[S.idx];
+  const nums = app.querySelectorAll('.key.num');
+  const labels = keyList(s).filter(k => k[1] === 'num').map(k => k[0]);
+  nums.forEach((b, i) => { if (labels[i] !== undefined) b.textContent = labels[i]; });
+  document.getElementById('go').disabled = !canGo(s);
+}
+
+function renderDone() {
+  app.innerHTML = `<div class="card done-box"><div class="big">🙌</div><h2>完了！</h2>
+    <p class="text">おつかれさまでした。<br>風袋 ${totalFutai()}kg ／ 申請通数 ${num(S.tsusu)}通</p>
+    <div class="nav"><button class="go" id="again">最初から</button></div></div>`;
+  document.getElementById('again').onclick = () => { S.mode = null; render(); };
+}
+
+resetBtn.onclick = () => { if (confirm('最初からやり直しますか？')) { S.mode = null; render(); scrollTo(0, 0); } };
+render();
+</script>
+</body>
+</html>
